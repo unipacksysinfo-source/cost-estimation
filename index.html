@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Lite Cost Estimator · Enterprise Cost Intelligence Suite</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="description" content="Enterprise Cost Intelligence Suite for packaging cost estimation">
+    <meta name="theme-color" content="#1a56db">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cost Est.">
+    <link rel="apple-touch-icon" sizes="48x48"  href="/icon-48.png">
+    <link rel="apple-touch-icon" sizes="72x72"  href="/icon-72.png">
+    <link rel="apple-touch-icon" sizes="96x96"  href="/icon-96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1a56db; --primary-dark: #1444b8; --primary-light: #dbeafe;
+            --accent: #0ea5e9; --success: #059669; --danger: #dc2626;
+            --warning: #d97706; --purple: #7c3aed;
+            --bg: #f0f2f5; --surface: #ffffff; --surface-2: #f8f9fb;
+            --border: #e2e5ea; --border-strong: #cdd1d8;
+            --text-primary: #111827; --text-secondary: #4b5563; --text-muted: #9ca3af;
+            --sidebar-width: 220px; --sidebar-bg: #0d1117; --sidebar-text: rgba(255,255,255,0.75);
+        }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); overflow-x: hidden; font-size: 13px; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:translateY(0);} }
+        .app { display:flex; min-height:100vh; }
+
+        /* SIDEBAR */
+        .sidebar { width:var(--sidebar-width); background:var(--sidebar-bg); position:fixed; height:100vh; overflow-y:auto; z-index:100; border-right:1px solid rgba(255,255,255,0.04); display:flex; flex-direction:column; }
+        .sidebar-header { padding:18px 16px 14px; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
+        .logo-icon { width:32px; height:32px; background:var(--primary); border-radius:8px; display:flex; align-items:center; justify-content:center; }
+        .logo-icon i { font-size:14px; color:white; }
+        .logo-text h2 { font-size:13px; font-weight:700; color:#fff; }
+        .logo-text p { font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:0.5px; text-transform:uppercase; }
+        .nav-menu { padding:10px; flex:1; }
+        .nav-section-title { font-size:9px; text-transform:uppercase; letter-spacing:1.2px; color:rgba(255,255,255,0.25); padding:10px 8px 5px; font-weight:600; }
+        .nav-item { display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:6px; cursor:pointer; color:var(--sidebar-text); font-size:12px; font-weight:500; transition:all 0.15s; margin-bottom:1px; }
+        .nav-item i { width:16px; font-size:12px; flex-shrink:0; }
+        .nav-item:hover { background:rgba(255,255,255,0.06); color:white; }
+        .nav-item.active { background:rgba(26,86,219,0.25); color:white; border-left:2px solid var(--primary); padding-left:8px; }
+        .nav-divider { height:1px; background:rgba(255,255,255,0.05); margin:8px 0; }
+
+        /* MAIN */
+        .main-content { flex:1; margin-left:var(--sidebar-width); min-height:100vh; display:flex; flex-direction:column; }
+        .top-bar { background:var(--surface); height:52px; display:flex; justify-content:space-between; align-items:center; padding:0 20px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:99; }
+        .breadcrumb { display:flex; align-items:center; gap:6px; }
+        .breadcrumb-app { font-size:11px; color:var(--text-muted); font-weight:500; }
+        .breadcrumb-sep { color:var(--border-strong); }
+        .page-title { font-size:13px; font-weight:700; }
+        .top-actions { display:flex; align-items:center; gap:10px; position:relative; }
+        .top-btn { width:32px; height:32px; border-radius:7px; border:1px solid var(--border); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); transition:all 0.15s; position:relative; }
+        .top-btn:hover { background:var(--surface-2); }
+        .top-btn i { font-size:13px; }
+        .notif-dot { position:absolute; top:4px; right:4px; width:7px; height:7px; background:var(--danger); border-radius:50%; border:1px solid white; }
+        .avatar-btn { display:flex; align-items:center; gap:8px; padding:4px 10px 4px 4px; border-radius:8px; border:1px solid var(--border); background:var(--surface); cursor:pointer; transition:all 0.15s; }
+        .avatar-btn:hover { background:var(--surface-2); }
+        .avatar-circle { width:26px; height:26px; background:linear-gradient(135deg, var(--primary), var(--accent)); border-radius:6px; display:flex; align-items:center; justify-content:center; }
+        .avatar-circle i { color:white; font-size:12px; }
+        .avatar-name { font-size:12px; font-weight:600; }
+        .dropdown-menu { position:absolute; top:48px; right:0; background:white; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12),0 0 0 1px var(--border); width:220px; display:none; z-index:1000; overflow:hidden; }
+        .dropdown-menu.show { display:block; animation:fadeIn 0.15s ease; }
+        .dropdown-item { padding:9px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; font-size:12px; font-weight:500; color:var(--text-secondary); }
+        .dropdown-item:hover { background:var(--surface-2); }
+        .dropdown-item i { width:14px; color:var(--text-muted); }
+        .dropdown-item.logout { color:var(--danger); border-top:1px solid var(--border); }
+
+        /* PAGES */
+        .page-container { padding:16px 20px; display:none; }
+        .page-container.active { display:block; animation:fadeIn 0.25s ease; }
+
+        /* KPI */
+        .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+        .kpi-card { background:var(--surface); border-radius:8px; padding:12px 14px; border:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+        .kpi-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .kpi-icon.blue { background:#dbeafe; } .kpi-icon.blue i { color:var(--primary); }
+        .kpi-icon.green { background:#d1fae5; } .kpi-icon.green i { color:var(--success); }
+        .kpi-icon.orange { background:#fef3c7; } .kpi-icon.orange i { color:var(--warning); }
+        .kpi-icon.purple { background:#ede9fe; } .kpi-icon.purple i { color:var(--purple); }
+        .kpi-icon i { font-size:15px; }
+        .kpi-body { min-width:0; }
+        .kpi-label { font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+        .kpi-value { font-size:20px; font-weight:700; font-family:'DM Mono',monospace; line-height:1.2; margin-top:2px; }
+        .kpi-unit { font-size:10px; color:var(--text-muted); }
+
+        /* PANEL */
+        .panel { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+        .panel-header { padding:9px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--surface-2); flex-wrap:wrap; gap:8px; }
+        .panel-title { font-size:12px; font-weight:700; display:flex; align-items:center; gap:7px; }
+        .panel-title i { color:var(--primary); font-size:12px; }
+        .panel-badge { background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; }
+        .panel-body { padding:14px; }
+
+        /* FORM */
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px; }
+        .form-group { display:flex; flex-direction:column; gap:4px; }
+        .form-group label { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+        .form-group input, .form-group select { padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:'DM Sans',sans-serif; height:32px; background:var(--surface); color:var(--text-primary); transition:all 0.15s; }
+        .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 2px rgba(26,86,219,0.1); }
+        .form-group input[type="range"] { height:auto; padding:4px 0; border:none; box-shadow:none; }
+        .range-val { display:inline-block; background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; margin-top:4px; }
+        .currency-row { display:flex; gap:6px; }
+        .currency-row select { width:80px; flex-shrink:0; }
+        .currency-row input { flex:1; }
+
+        /* TABLE */
+        .table-wrap { overflow-x:auto; }
+        .erp-table { width:100%; border-collapse:collapse; font-size:11.5px; }
+        .erp-table thead tr { background:var(--surface-2); }
+        .erp-table th { padding:8px 10px; text-align:left; color:var(--text-muted); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+        .erp-table td { padding:7px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .erp-table tbody tr:last-child td { border-bottom:none; }
+        .erp-table tbody tr:hover { background:#f7f8fb; }
+        .erp-table td.mono { font-family:'DM Mono',monospace; font-size:11px; }
+        .erp-table td.money { font-family:'DM Mono',monospace; font-weight:600; color:var(--primary); text-align:right; }
+        .erp-table th:last-child, .erp-table td:last-child { text-align:right; }
+        .erp-table input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); }
+
+        /* BUTTONS */
+        .btn { display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:6px; font-weight:600; font-size:11px; cursor:pointer; border:1px solid transparent; font-family:'DM Sans',sans-serif; height:30px; white-space:nowrap; transition:all 0.15s; }
+        .btn i { font-size:10px; }
+        .btn-primary { background:var(--primary); color:white; border-color:var(--primary-dark); }
+        .btn-primary:hover { background:var(--primary-dark); }
+        .btn-outline { background:white; border-color:var(--border-strong); color:var(--text-secondary); }
+        .btn-outline:hover { background:var(--surface-2); }
+        .btn-danger { background:#fef2f2; color:var(--danger); border-color:#fecaca; }
+        .btn-danger:hover { background:var(--danger); color:white; }
+        .btn-warning { background:#fffbeb; color:var(--warning); border-color:#fde68a; }
+        .btn-warning:hover { background:var(--warning); color:white; }
+        .btn-success { background:#f0fdf4; color:var(--success); border-color:#bbf7d0; }
+        .btn-success:hover { background:var(--success); color:white; }
+        .btn-sm { padding:4px 10px; height:26px; font-size:10px; }
+        .btn-pdf { background:linear-gradient(135deg,#dc2626,#b91c1c); color:white; border-color:#991b1b; }
+        .btn-pdf:hover { background:#b91c1c; }
+
+        /* COST CARDS */
+        .cost-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+        .cost-card { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+        .cost-card-label { font-size:9px; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:6px; }
+        .cost-card-value { font-size:16px; font-weight:700; font-family:'DM Mono',monospace; }
+        .cost-card-unit { font-size:9px; color:var(--text-muted); margin-top:2px; }
+        .cost-card.accent { background:var(--primary); border-color:var(--primary-dark); }
+        .cost-card.accent .cost-card-label,.cost-card.accent .cost-card-unit { color:rgba(255,255,255,0.7); }
+        .cost-card.accent .cost-card-value { color:white; }
+        .cost-card.success { background:var(--success); border-color:#047857; }
+        .cost-card.success .cost-card-label,.cost-card.success .cost-card-unit { color:rgba(255,255,255,0.7); }
+        .cost-card.success .cost-card-value { color:white; }
+
+        /* MODAL */
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.45); backdrop-filter:blur(4px); justify-content:center; align-items:center; z-index:2000; }
+        .modal-content { background:white; border-radius:12px; width:480px; max-width:94%; box-shadow:0 20px 50px rgba(0,0,0,0.2); border:1px solid var(--border); }
+        .modal-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+        .modal-title { font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .modal-title i { color:var(--primary); }
+        .modal-close { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-muted); transition:all 0.15s; }
+        .modal-close:hover { background:var(--danger); border-color:var(--danger); color:white; }
+        .modal-body { padding:16px 18px; display:flex; flex-direction:column; gap:10px; max-height:70vh; overflow-y:auto; }
+        .modal-footer { padding:12px 18px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+
+        /* CHIPS */
+        .chip { display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; }
+        .chip.green { background:#d1fae5; color:var(--success); }
+        .chip.blue { background:var(--primary-light); color:var(--primary); }
+        .chip.orange { background:#fef3c7; color:var(--warning); }
+        .chip.red { background:#fef2f2; color:var(--danger); }
+
+        /* STATUS BADGE */
+        .status-badge { display:inline-flex; padding:2px 10px; border-radius:20px; font-size:10px; font-weight:600; }
+        .status-badge.draft { background:#fef3c7; color:#d97706; }
+        .status-badge.submitted { background:#d1fae5; color:var(--success); }
+
+        /* DOC BAR */
+        .doc-bar { background:linear-gradient(135deg,#1e3a5f,#1a56db); border-radius:8px; margin-bottom:12px; }
+
+        /* TOOLBAR */
+        .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+        /* DIVIDER */
+        .divider { height:1px; background:var(--border); margin:12px 0; }
+
+        /* EMPTY ROW */
+        .empty-row td { text-align:center; padding:30px !important; color:var(--text-muted); font-size:12px; }
+        .empty-row td i { font-size:22px; display:block; margin-bottom:6px; opacity:0.35; }
+
+        /* LOADING OVERLAY */
+        #pdfLoadingOverlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(13,17,23,0.8); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center; flex-direction:column; gap:16px; }
+        #pdfLoadingOverlay.show { display:flex; }
+        .pdf-loader-box { background:white; border-radius:16px; padding:32px 40px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,0.3); }
+        .pdf-loader-icon { font-size:40px; color:var(--danger); margin-bottom:12px; animation:pulse 1s infinite; }
+        .pdf-loader-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+        .pdf-loader-sub { font-size:12px; color:var(--text-muted); }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+        .pdf-progress { width:240px; height:4px; background:#e2e5ea; border-radius:10px; margin-top:16px; overflow:hidden; }
+        .pdf-progress-bar { height:100%; background:linear-gradient(90deg,var(--primary),var(--accent)); border-radius:10px; transition:width 0.3s; }
+
+        /* REPORT MODAL */
+        .report-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); z-index:3000; overflow-y:auto; padding:20px 0; }
+        .report-modal-overlay.show { display:block; animation:fadeIn 0.2s ease; }
+        .report-modal-box { background:white; border-radius:16px; width:820px; max-width:96%; margin:0 auto; box-shadow:0 24px 60px rgba(0,0,0,0.25); }
+        .report-modal-header { background:linear-gradient(135deg,#1e3a5f,#1a56db); border-radius:16px 16px 0 0; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; }
+        .report-modal-title { color:white; font-size:15px; font-weight:700; display:flex; align-items:center; gap:10px; }
+        .report-modal-title i { opacity:0.8; }
+        .report-modal-actions { display:flex; gap:8px; }
+        .report-modal-body { padding:0; }
+
+        @media (max-width:768px) {
+            :root { --sidebar-width:0px; }
+            .sidebar { display:none; }
+            .kpi-grid { grid-template-columns:repeat(2,1fr); }
+            .cost-grid { grid-template-columns:repeat(2,1fr); }
+            .page-container { padding:12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" onclick="showPage('dashboard',null)">
+                <div class="logo-icon"><i class="fas fa-cube"></i></div>
+                <div class="logo-text"><h2>Lite Cost Estimation</h2><p>Cost Estimation Tools</p></div>
+            </div>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="showPage('dashboard',this)"><i class="fas fa-chart-pie"></i><span>Dashboard</span></div>
+            <div class="nav-item" onclick="showPage('estimation',this)"><i class="fas fa-calculator"></i><span>Cost Estimation</span></div>
+            <div class="nav-item" onclick="showPage('estimations',this)"><i class="fas fa-folder-open"></i><span>Saved Estimations</span></div>
+            <div class="nav-divider"></div>
+            <div class="nav-section-title">Master Data</div>
+            <div class="nav-item" onclick="showPage('solid-master',this)"><i class="fas fa-cubes"></i><span>Solid Materials</span></div>
+            <div class="nav-item" onclick="showPage('liquid-master',this)"><i class="fas fa-tint"></i><span>Liquid Materials</span></div>
+            <div class="nav-item" onclick="showPage('working-centre',this)"><i class="fas fa-cogs"></i><span>Working Centre</span></div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="breadcrumb">
+                <span class="breadcrumb-app">Lite Cost Estimation</span>
+                <span class="breadcrumb-sep">/</span>
+                <span class="page-title" id="pageTitle">Dashboard</span>
+            </div>
+            <div class="top-actions">
+                <button class="top-btn" id="notificationBtn" title="Notifications"><i class="fas fa-bell"></i><span class="notif-dot"></span></button>
+                <div class="avatar-btn" id="avatarBtn">
+                    <div class="avatar-circle"><i class="fas fa-user"></i></div>
+                    <span class="avatar-name" id="profileName">John Anderson</span>
+                </div>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <div class="dropdown-item" onclick="openProfileModal()"><i class="fas fa-user-edit"></i> Edit Profile</div>
+                    <div class="dropdown-item logout"><i class="fas fa-sign-out-alt"></i> Sign Out</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== DASHBOARD ===== -->
+        <div class="page-container active" id="dashboardPage">
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-file-invoice"></i></div><div class="kpi-body"><div class="kpi-label">Total Estimations</div><div class="kpi-value" id="dashTotalEst">0</div><div class="kpi-unit">documents</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon orange"><i class="fas fa-cubes"></i></div><div class="kpi-body"><div class="kpi-label">Solid Materials</div><div class="kpi-value" id="dashSolidCount">0</div><div class="kpi-unit">items</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-tint"></i></div><div class="kpi-body"><div class="kpi-label">Liquid Materials</div><div class="kpi-value" id="dashLiquidCount">0</div><div class="kpi-unit">items</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-cogs"></i></div><div class="kpi-body"><div class="kpi-label">Working Centre</div><div class="kpi-value" id="dashWCCount">0</div><div class="kpi-unit">machines</div></div></div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+                </div>
+                <div class="panel-body">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                        <div class="panel" style="margin:0;cursor:pointer;" onclick="showPage('estimation',null);newEstimation();">
+                            <div class="panel-body" style="display:flex;align-items:center;gap:12px;padding:12px 14px;">
+                                <div class="kpi-icon blue" style="flex-shrink:0;width:32px;height:32px;"><i class="fas fa-plus" style="font-size:13px;"></i></div>
+                                <div><div style="font-size:11px;font-weight:700;">New Estimation</div><div style="font-size:10px;color:var(--text-muted);margin-top:1px;">Create cost estimation</div></div>
+                                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:10px;"></i>
+                            </div>
+                        </div>
+                        <div class="panel" style="margin:0;cursor:pointer;" onclick="showPage('estimations',null);">
+                            <div class="panel-body" style="display:flex;align-items:center;gap:12px;padding:12px 14px;">
+                                <div class="kpi-icon orange" style="flex-shrink:0;width:32px;height:32px;"><i class="fas fa-folder-open" style="font-size:13px;"></i></div>
+                                <div><div style="font-size:11px;font-weight:700;">Saved Estimations</div><div style="font-size:10px;color:var(--text-muted);margin-top:1px;">View & manage results</div></div>
+                                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:10px;"></i>
+                            </div>
+                        </div>
+                        <div class="panel" style="margin:0;cursor:pointer;" onclick="showPage('working-centre',null);">
+                            <div class="panel-body" style="display:flex;align-items:center;gap:12px;padding:12px 14px;">
+                                <div class="kpi-icon green" style="flex-shrink:0;width:32px;height:32px;"><i class="fas fa-cogs" style="font-size:13px;"></i></div>
+                                <div><div style="font-size:11px;font-weight:700;">Working Centre</div><div style="font-size:10px;color:var(--text-muted);margin-top:1px;">Manage machines</div></div>
+                                <i class="fas fa-chevron-right" style="margin-left:auto;color:var(--text-muted);font-size:10px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ESTIMATION PAGE ===== -->
+        <div class="page-container" id="estimationPage">
+            <!-- Doc Bar -->
+            <div class="doc-bar panel">
+                <div class="panel-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 16px;">
+                    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+                        <div>
+                            <div style="font-size:9px;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Document No.</div>
+                            <div style="font-size:18px;font-weight:700;color:white;font-family:'DM Mono',monospace;letter-spacing:1px;" id="docNumberDisplay">EST-2026-0001</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Status</div>
+                            <span class="status-badge draft" id="docStatusBadge">Draft</span>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Created</div>
+                            <div style="font-size:11px;color:white;" id="docCreatedDate">—</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Prepared By</div>
+                            <div style="font-size:11px;color:white;" id="docPreparedBy">—</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:white;" onclick="newEstimation()"><i class="fas fa-plus"></i> New</button>
+                        <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:white;" onclick="cancelCurrentEstimation()"><i class="fas fa-times"></i> Cancel</button>
+                        <button class="btn btn-success btn-sm" onclick="saveCurrentEstimation()"><i class="fas fa-save"></i> Save Estimation</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI -->
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-icon blue"><i class="fas fa-ruler"></i></div><div class="kpi-body"><div class="kpi-label">Net Meter</div><div class="kpi-value" id="statNetMeter">0.00</div><div class="kpi-unit">m</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-chart-line"></i></div><div class="kpi-body"><div class="kpi-label">Qty Meter</div><div class="kpi-value" id="statQtyMeter">0.00</div><div class="kpi-unit">m</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon orange"><i class="fas fa-square"></i></div><div class="kpi-body"><div class="kpi-label">Total Area</div><div class="kpi-value" id="statSqm">0.00</div><div class="kpi-unit">m²</div></div></div>
+                <div class="kpi-card"><div class="kpi-icon purple"><i class="fas fa-coins"></i></div><div class="kpi-body"><div class="kpi-label">Total Cost</div><div class="kpi-value" id="statTotalCost">0</div><div class="kpi-unit">IDR</div></div></div>
+            </div>
+
+            <!-- Product Profile -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-box"></i> Product Profile</div><span class="panel-badge">Required</span></div>
+                <div class="panel-body"><div class="form-grid">
+                    <div class="form-group"><label>Product Name</label><input type="text" id="productName" placeholder="e.g., PENAWARAN OPP HERBAL"></div>
+                    <div class="form-group"><label>Composition</label><input type="text" id="composition" placeholder="e.g., OPP18/INK/DL/VMCPP20"></div>
+                    <div class="form-group"><label>Category Tier</label>
+                        <select id="categoryTier">
+                            <option value="">Select Category</option>
+                            <option value="Low-End">Low-End (10%)</option>
+                            <option value="Mid-End">Mid-End (15%)</option>
+                            <option value="High-End">High-End (20%)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Grouping Product</label>
+                        <select id="groupingProduct">
+                            <option value="">Select Grouping</option>
+                            <option value="BEVERAGE">BEVERAGE</option>
+                            <option value="BISCUIT">BISCUIT</option>
+                            <option value="COOKING OIL">COOKING OIL</option>
+                            <option value="DAIRY">DAIRY</option>
+                            <option value="FROZEN FOODS">FROZEN FOODS</option>
+                            <option value="HERBAL">HERBAL</option>
+                            <option value="HOUSEHOLD">HOUSEHOLD</option>
+                            <option value="PHARMACEUTICALS">PHARMACEUTICALS</option>
+                            <option value="SNACK">SNACK</option>
+                        </select>
+                    </div>
+                </div></div>
+            </div>
+
+            <!-- Dimension & Order -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-ruler-combined"></i> Dimension & Order</div><span class="panel-badge">Required</span></div>
+                <div class="panel-body"><div class="form-grid">
+                    <div class="form-group"><label>Lebar Roll (mm)</label><input type="number" id="lebarRoll" placeholder="0"></div>
+                    <div class="form-group"><label>Panjang per Roll (m)</label><input type="number" id="panjangPitch" placeholder="0"></div>
+                    <div class="form-group"><label>Qty Order</label><input type="number" id="qtyOrder" placeholder="0"></div>
+                    <div class="form-group"><label>Unit</label>
+                        <select id="unitType"><option value="">Select Unit</option><option value="Roll">Roll</option><option value="PCS">PCS</option></select>
+                    </div>
+                    <div class="form-group"><label>Layout (Up)</label><input type="number" id="upValue" placeholder="16"></div>
+                    <div class="form-group"><label>Waste Factor (%)</label><input type="number" id="wasteFactor" placeholder="10.00" step="1"></div>
+                    <div class="form-group"><label>Number of Unit (1–10)</label><input type="range" id="jumlahWarna" min="1" max="10" step="1" value="5"><span class="range-val" id="warnaValueDisplay">5 Unit</span></div>
+                    <div class="form-group"><label>Exchange Rate</label>
+                        <div class="currency-row">
+                            <select id="currencyType"><option value="USD">USD</option><option value="IDR">IDR</option><option value="EUR">EUR</option></select>
+                            <input type="number" id="currencyRate" placeholder="1">
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+
+            <!-- Solid Material -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-cubes"></i> Solid Material Inventory</div>
+                    <button class="btn btn-primary btn-sm" onclick="openSolidModal()"><i class="fas fa-plus"></i> Add Solid</button>
+                </div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>Material</th><th>Type</th><th>Density</th><th>Thickness</th><th>Price/kg</th><th style="text-align:center;">Use</th><th>Qty (KG)</th><th>Amount (IDR)</th><th>Actions</th></tr></thead>
+                    <tbody id="solidTableBody"></tbody>
+                </table></div></div>
+            </div>
+
+            <!-- Liquid Material -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-tint"></i> Liquid Material Inventory</div>
+                    <button class="btn btn-primary btn-sm" onclick="openLiquidModal()"><i class="fas fa-plus"></i> Add Liquid</button>
+                </div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>Material</th><th>Type</th><th>Grammage</th><th>Price/kg</th><th style="text-align:center;">Use</th><th>Qty (KG)</th><th>Amount (IDR)</th><th>Actions</th></tr></thead>
+                    <tbody id="liquidTableBody"></tbody>
+                </table></div></div>
+            </div>
+
+            <!-- Sub Operational Cost -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-industry"></i> Sub Operational Cost per Machine</div>
+                    <button class="btn btn-primary btn-sm" onclick="openMachineOpModal()"><i class="fas fa-plus"></i> Add Machine</button>
+                </div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>Machine</th><th>Grouping</th><th>Target</th><th>Base Unit</th><th>Cost/Min (IDR)</th><th>Status</th><th>Working Hrs</th><th>Total Cost (IDR)</th><th>Actions</th></tr></thead>
+                    <tbody id="machineOpTableBody"></tbody>
+                </table></div></div>
+            </div>
+
+            <!-- Cost Summary -->
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-file-invoice-dollar"></i> Financial Summary</div><span class="panel-badge">Auto Calculate</span></div>
+                <div class="panel-body">
+                    <div class="cost-grid">
+                        <div class="cost-card"><div class="cost-card-label">Material Cost</div><div class="cost-card-value" id="totalMaterialCost">0</div><div class="cost-card-unit">IDR</div></div>
+                        <div class="cost-card"><div class="cost-card-label">Operational Cost</div><div class="cost-card-value" id="operationalCost">0</div><div class="cost-card-unit">IDR</div></div>
+                        <div class="cost-card"><div class="cost-card-label">Grand Total</div><div class="cost-card-value" id="grandTotal">0</div><div class="cost-card-unit">IDR</div></div>
+                        <div class="cost-card accent"><div class="cost-card-label">Final Price (+Margin)</div><div class="cost-card-value" id="finalPrice">0</div><div class="cost-card-unit">IDR</div></div>
+                        <div class="cost-card success"><div class="cost-card-label">Price / Roll</div><div class="cost-card-value" id="pricePerRoll">0</div><div class="cost-card-unit">IDR</div></div>
+                    </div>
+                    <div class="divider"></div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button class="btn btn-pdf" onclick="generatePDFReport()"><i class="fas fa-file-pdf"></i> Export PDF Report</button>
+                        <button class="btn btn-outline" onclick="previewReport()"><i class="fas fa-eye"></i> Preview Report</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SAVED ESTIMATIONS ===== -->
+        <div class="page-container" id="estimationsPage">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title"><i class="fas fa-folder-open"></i> Saved Estimations</div>
+                    <div class="toolbar">
+                        <input type="text" id="searchEstimation" placeholder="Search doc / product..." onkeyup="filterEstimations()" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;height:30px;width:200px;">
+                        <button class="btn btn-primary btn-sm" onclick="showPage('estimation',null);newEstimation();"><i class="fas fa-plus"></i> New Estimation</button>
+                    </div>
+                </div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>#</th><th>Doc Number</th><th>Date</th><th>Product Name</th><th>Grouping</th><th>Category</th><th>Qty Order</th><th>Final Price (IDR)</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="estimationsTableBody"></tbody>
+                </table></div></div>
+            </div>
+        </div>
+
+        <!-- ===== MASTER PAGES ===== -->
+        <div class="page-container" id="solid-masterPage">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-cubes"></i> Solid Materials Master</div><button class="btn btn-primary btn-sm" onclick="openSolidMasterModal()"><i class="fas fa-plus"></i> Add Solid</button></div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Density</th><th>Thickness</th><th>Price/kg</th><th>Actions</th></tr></thead>
+                    <tbody id="solidMasterBody"></tbody>
+                </table></div></div>
+            </div>
+        </div>
+        <div class="page-container" id="liquid-masterPage">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-tint"></i> Liquid Materials Master</div><button class="btn btn-primary btn-sm" onclick="openLiquidMasterModal()"><i class="fas fa-plus"></i> Add Liquid</button></div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Coating Wt</th><th>Price/kg</th><th>Actions</th></tr></thead>
+                    <tbody id="liquidMasterBody"></tbody>
+                </table></div></div>
+            </div>
+        </div>
+        <div class="page-container" id="working-centrePage">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title"><i class="fas fa-cogs"></i> Working Centre Master</div><button class="btn btn-primary btn-sm" onclick="openWCMasterModal()"><i class="fas fa-plus"></i> Add Machine</button></div>
+                <div class="panel-body" style="padding:0;"><div class="table-wrap"><table class="erp-table">
+                    <thead><tr><th>#</th><th>Machine Name</th><th>Grouping</th><th>Target</th><th>Base Unit</th><th>Cost/Min (IDR)</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="wcMasterBody"></tbody>
+                </table></div></div>
+            </div>
+        </div>
+    </div><!-- end main-content -->
+</div><!-- end app -->
+
+<!-- ===== MODALS ===== -->
+<div id="solidModalForm" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title"><i class="fas fa-cubes"></i> Solid Material</div><button class="modal-close" onclick="closeSolidModal()"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="solidEditIdx" value="-1">
+            <div class="form-group"><label>Name</label><input type="text" id="solidName" placeholder="e.g., PET 12"></div>
+            <div class="form-group"><label>Type</label><select id="solidType"><option value="film">Film</option><option value="layer">Layer</option><option value="resin">Resin</option></select></div>
+            <div class="form-group"><label>Density (g/cm³)</label><input type="number" id="solidDensity" step="0.01" placeholder="1.4"></div>
+            <div class="form-group"><label>Thickness (µm)</label><input type="number" id="solidThickness" step="1" placeholder="12"></div>
+            <div class="form-group"><label>Price/kg (USD)</label><input type="number" id="solidPrice" step="0.01" placeholder="2.25"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeSolidModal()">Cancel</button><button class="btn btn-primary" onclick="saveSolidMaster()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+</div>
+
+<div id="liquidModalForm" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title"><i class="fas fa-tint"></i> Liquid Material</div><button class="modal-close" onclick="closeLiquidModal()"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="liquidEditIdx" value="-1">
+            <div class="form-group"><label>Name</label><input type="text" id="liquidName" placeholder="e.g., Sp. Red"></div>
+            <div class="form-group"><label>Type</label><select id="liquidType"><option value="tinta">Tinta</option><option value="adhesive">Adhesive</option><option value="solven">Solven</option></select></div>
+            <div class="form-group"><label>Coating Weight (g/m²)</label><input type="number" id="liquidCoating" step="0.01" placeholder="0.25"></div>
+            <div class="form-group"><label>Price/kg (USD)</label><input type="number" id="liquidPrice" step="0.01" placeholder="3.00"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeLiquidModal()">Cancel</button><button class="btn btn-primary" onclick="saveLiquidMaster()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+</div>
+
+<div id="wcModalForm" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title"><i class="fas fa-cogs"></i> Working Centre</div><button class="modal-close" onclick="closeWCMasterModal()"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="wcEditIdx" value="-1">
+            <div class="form-group"><label>Machine Name</label><input type="text" id="wcName" placeholder="e.g., Printing Machine 01"></div>
+            <div class="form-group"><label>Grouping</label><select id="wcGrouping"><option value="Printing">Printing</option><option value="Extrusion">Extrusion</option><option value="Dry Laminasi">Dry Laminasi</option><option value="Slitting">Slitting</option><option value="Bag Making">Bag Making</option><option value="Blown Film">Blown Film</option></select></div>
+            <div class="form-group"><label>Target</label><input type="number" id="wcTarget" step="1" placeholder="180"></div>
+            <div class="form-group"><label>Base Unit</label><select id="wcBaseUnit"><option value="m/min">m/min</option><option value="kg/min">kg/min</option><option value="pcs/min">pcs/min</option></select></div>
+            <div class="form-group"><label>Cost per Minute (IDR)</label><input type="number" id="wcCostMinute" step="1000" placeholder="15000"></div>
+            <div class="form-group"><label>Status</label><select id="wcStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Maintenance">Maintenance</option></select></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeWCMasterModal()">Cancel</button><button class="btn btn-primary" onclick="saveWCMaster()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+</div>
+
+<div id="machineOpModalForm" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title"><i class="fas fa-industry"></i> Machine Cost Entry</div><button class="modal-close" onclick="closeMachineOpModal()"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="machineOpEditIdx" value="-1">
+            <div class="form-group"><label>Machine Name</label><input type="text" id="moName" placeholder="e.g., Printing Machine 01"></div>
+            <div class="form-group"><label>Grouping</label><select id="moGrouping"><option value="Printing">Printing</option><option value="Extrusion">Extrusion</option><option value="Dry Laminasi">Dry Laminasi</option><option value="Slitting">Slitting</option><option value="Bag Making">Bag Making</option><option value="Blown Film">Blown Film</option></select></div>
+            <div class="form-group"><label>Target</label><input type="number" id="moTarget" step="1" placeholder="180"></div>
+            <div class="form-group"><label>Base Unit</label><select id="moBaseUnit"><option value="m/min">m/min</option><option value="kg/min">kg/min</option><option value="pcs/min">pcs/min</option></select></div>
+            <div class="form-group"><label>Cost per Minute (IDR)</label><input type="number" id="moCostMinute" step="1000" placeholder="15000"></div>
+            <div class="form-group"><label>Status</label><select id="moStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeMachineOpModal()">Cancel</button><button class="btn btn-primary" onclick="saveMachineOpMaster()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+</div>
+
+<div id="profileModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title"><i class="fas fa-user-edit"></i> Edit Profile</div><button class="modal-close" onclick="closeProfileModal()"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Full Name</label><input type="text" id="editFullName" placeholder="John Anderson"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="editEmail" placeholder="john@cirrus.com"></div>
+            <div class="form-group"><label>Job Title</label><input type="text" id="editJobTitle" placeholder="Cost Estimator"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeProfileModal()">Cancel</button><button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-save"></i> Save</button></div>
+    </div>
+</div>
+
+<!-- PDF Loading Overlay -->
+<div id="pdfLoadingOverlay">
+    <div class="pdf-loader-box">
+        <div class="pdf-loader-icon"><i class="fas fa-file-pdf"></i></div>
+        <div class="pdf-loader-title">Generating PDF Report...</div>
+        <div class="pdf-loader-sub" id="pdfLoadingStatus">Preparing document layout</div>
+        <div class="pdf-progress"><div class="pdf-progress-bar" id="pdfProgressBar" style="width:0%"></div></div>
+    </div>
+</div>
+
+<!-- Report Preview Overlay -->
+<div class="report-modal-overlay" id="reportPreviewOverlay">
+    <div class="report-modal-box">
+        <div class="report-modal-header">
+            <div class="report-modal-title"><i class="fas fa-file-invoice"></i> <span id="previewDocTitle">Estimation Report</span></div>
+            <div class="report-modal-actions">
+                <button class="btn btn-pdf btn-sm" onclick="generatePDFReport()"><i class="fas fa-download"></i> Download PDF</button>
+                <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:white;" onclick="closeReportPreview()"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div style="padding:24px;" id="reportPreviewBody"></div>
+    </div>
+</div>
+
+<!-- Hidden PDF Container (off-screen render) -->
+<div id="pdfRenderContainer" style="position:fixed;left:-9999px;top:0;width:794px;background:white;z-index:-1;"></div>
+
+<script>
+// ==================== STORAGE KEYS ====================
+const ESTIMATIONS_KEY = 'cirrus_estimations_v3';
+const SOLID_KEY       = 'cirrus_solid_v3';
+const LIQUID_KEY      = 'cirrus_liquid_v3';
+const WC_KEY          = 'cirrus_wc_v3';
+const MACHINE_OP_KEY  = 'cirrus_machineop_v3';
+const LAST_DOC_KEY    = 'cirrus_last_doc_v3';
+const PROFILE_KEY     = 'cirrus_profile_v3';
+
+// ==================== DEFAULTS ====================
+const DEFAULT_SOLID = [
+    { name:"PET 12",    type:"film",  density:1.40, thickness:12, price:2.25  },
+    { name:"VMCPP 25",  type:"film",  density:0.91, thickness:25, price:3.80  },
+    { name:"OPP 18",    type:"film",  density:0.91, thickness:18, price:2.30  },
+    { name:"CPP 25",    type:"film",  density:0.91, thickness:25, price:2.50  },
+    { name:"NYLON 15",  type:"film",  density:1.15, thickness:15, price:5.50  }
+];
+const DEFAULT_LIQUID = [
+    { name:"Sp. Red",   type:"tinta",    coating:0.25,     price:3.00  },
+    { name:"Cyan",      type:"tinta",    coating:0.25,     price:3.00  },
+    { name:"Magenta",   type:"tinta",    coating:0.25,     price:3.67  },
+    { name:"Yellow",    type:"tinta",    coating:0.65,     price:2.60  },
+    { name:"Black",     type:"tinta",    coating:0.05,     price:2.75  },
+    { name:"White",     type:"tinta",    coating:0.50,     price:2.50  },
+    { name:"LG 9780 N", type:"adhesive", coating:0.438356, price:3.10  },
+    { name:"KN 75",     type:"adhesive", coating:0.065753, price:4.95  }
+];
+const DEFAULT_WC = [
+    { name:"Printing Machine 01",  grouping:"Printing",    target:180, baseUnit:"m/min", costMinute:15000, status:"Active" },
+    { name:"Dry Lam Machine 01",   grouping:"Dry Laminasi",target:90,  baseUnit:"m/min", costMinute:13000, status:"Active" },
+    { name:"Slitting Machine 01",  grouping:"Slitting",    target:90,  baseUnit:"m/min", costMinute:11000, status:"Active" }
+];
+const DEFAULT_MACHINE_OP = [
+    { name:"Printing Machine 01",  grouping:"Printing",    target:180, baseUnit:"m/min", costMinute:15000, status:"Active" },
+    { name:"Dry Lam Machine 01",   grouping:"Dry Laminasi",target:90,  baseUnit:"m/min", costMinute:13000, status:"Active" },
+    { name:"Slitting Machine 01",  grouping:"Slitting",    target:90,  baseUnit:"m/min", costMinute:11000, status:"Active" }
+];
+
+// ==================== STATE ====================
+let masterSolid = [], masterLiquid = [], masterWC = [], masterMachineOp = [];
+let estimations = [];
+let usedSolid = [0,1,2], usedLiquid = [0,1,2,3,4,5,6,7];
+let currentDocNumber = null, currentEditId = null;
+let userProfile = { name:"John Anderson", email:"john.anderson@cirrus.com", jobTitle:"Cost Estimator" };
+
+// ==================== INIT ====================
+function loadAllData() {
+    masterSolid    = JSON.parse(localStorage.getItem(SOLID_KEY)      || JSON.stringify(DEFAULT_SOLID));
+    masterLiquid   = JSON.parse(localStorage.getItem(LIQUID_KEY)     || JSON.stringify(DEFAULT_LIQUID));
+    masterWC       = JSON.parse(localStorage.getItem(WC_KEY)         || JSON.stringify(DEFAULT_WC));
+    masterMachineOp= JSON.parse(localStorage.getItem(MACHINE_OP_KEY) || JSON.stringify(DEFAULT_MACHINE_OP));
+    estimations    = JSON.parse(localStorage.getItem(ESTIMATIONS_KEY)|| '[]');
+    currentDocNumber = localStorage.getItem(LAST_DOC_KEY) || `EST-${new Date().getFullYear()}-0001`;
+    if (!localStorage.getItem(LAST_DOC_KEY)) localStorage.setItem(LAST_DOC_KEY, currentDocNumber);
+    const sp = localStorage.getItem(PROFILE_KEY);
+    if (sp) userProfile = JSON.parse(sp);
+    updateProfileDisplay();
+}
+
+function saveMasterData() {
+    localStorage.setItem(SOLID_KEY,       JSON.stringify(masterSolid));
+    localStorage.setItem(LIQUID_KEY,      JSON.stringify(masterLiquid));
+    localStorage.setItem(WC_KEY,          JSON.stringify(masterWC));
+    localStorage.setItem(MACHINE_OP_KEY,  JSON.stringify(masterMachineOp));
+    localStorage.setItem(ESTIMATIONS_KEY, JSON.stringify(estimations));
+}
+
+// ==================== DOCUMENT NUMBERING ====================
+function generateNewDocNumber() {
+    const m = currentDocNumber.match(/EST-(\d{4})-(\d+)/);
+    const yr = new Date().getFullYear();
+    if (m) {
+        const docYear = parseInt(m[1]);
+        const num = parseInt(m[2]) + 1;
+        currentDocNumber = docYear !== yr
+            ? `EST-${yr}-0001`
+            : `EST-${docYear}-${String(num).padStart(4,'0')}`;
+    } else {
+        currentDocNumber = `EST-${yr}-0001`;
+    }
+    localStorage.setItem(LAST_DOC_KEY, currentDocNumber);
+    return currentDocNumber;
+}
+
+function newEstimation() {
+    generateNewDocNumber();
+    currentEditId = null;
+    document.getElementById('docNumberDisplay').innerText = currentDocNumber;
+    document.getElementById('docCreatedDate').innerText = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('docPreparedBy').innerText = userProfile.name;
+    document.getElementById('docStatusBadge').className = 'status-badge draft';
+    document.getElementById('docStatusBadge').innerText = 'Draft';
+    ['productName','composition','lebarRoll','panjangPitch','qtyOrder','upValue','wasteFactor','currencyRate'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = '';
+    });
+    ['categoryTier','groupingProduct','unitType'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.selectedIndex = 0;
+    });
+    document.getElementById('currencyType').value = 'USD';
+    document.getElementById('jumlahWarna').value = 5;
+    document.getElementById('warnaValueDisplay').innerHTML = '5 Unit';
+    usedSolid = [0,1,2]; usedLiquid = [0,1,2,3,4,5,6,7];
+    refreshAll();
+}
+
+function cancelCurrentEstimation() {
+    if (currentEditId) {
+        if (confirm('Cancel editing? Changes will be lost.')) showPage('estimations', null);
+    } else {
+        if (confirm('Reset form? Doc number stays unchanged.')) {
+            ['productName','composition','lebarRoll','panjangPitch','qtyOrder','upValue','wasteFactor','currencyRate'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.value = '';
+            });
+            ['categoryTier','groupingProduct','unitType'].forEach(id => {
+                const el = document.getElementById(id); if(el) el.selectedIndex = 0;
+            });
+            document.getElementById('jumlahWarna').value = 5;
+            document.getElementById('warnaValueDisplay').innerHTML = '5 Unit';
+            usedSolid = []; usedLiquid = [];
+            document.getElementById('docStatusBadge').className = 'status-badge draft';
+            document.getElementById('docStatusBadge').innerText = 'Draft';
+            document.getElementById('docCreatedDate').innerText = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+            refreshAll();
+        }
+    }
+}
+
+function saveCurrentEstimation() {
+    const productName = document.getElementById('productName')?.value;
+    if (!productName) { alert('Please fill Product Name'); return; }
+    const qtyOrder = parseFloat(document.getElementById('qtyOrder')?.value);
+    if (!qtyOrder) { alert('Please fill Qty Order'); return; }
+
+    const solid = collectSolidData();
+    const liquid = collectLiquidData();
+    const machineOps = collectMachineOpData();
+    const { materialTotal, operationalTotal, grandTotal, finalPrice, margin } = calcFinancials();
+    const { netMeter, qtyMeter, sqMeter } = calcMeterage();
+
+    const est = {
+        id: currentEditId || Date.now(),
+        docNumber: currentDocNumber,
+        createdDate: document.getElementById('docCreatedDate').innerText,
+        savedAt: new Date().toISOString(),
+        preparedBy: userProfile.name,
+        status: 'Submitted',
+        productName,
+        composition:      document.getElementById('composition')?.value     || '',
+        categoryTier:     document.getElementById('categoryTier')?.value    || '',
+        groupingProduct:  document.getElementById('groupingProduct')?.value || '',
+        lebarRoll:        parseFloat(document.getElementById('lebarRoll')?.value)    || 0,
+        panjangPitch:     parseFloat(document.getElementById('panjangPitch')?.value) || 0,
+        qtyOrder,
+        unitType:         document.getElementById('unitType')?.value        || '',
+        upValue:          parseFloat(document.getElementById('upValue')?.value)      || 0,
+        wasteFactor:      parseFloat(document.getElementById('wasteFactor')?.value)  || 0,
+        jumlahWarna:      parseInt(document.getElementById('jumlahWarna')?.value)    || 5,
+        currencyType:     document.getElementById('currencyType')?.value    || 'USD',
+        currencyRate:     parseFloat(document.getElementById('currencyRate')?.value) || 1,
+        usedSolid: [...usedSolid], usedLiquid: [...usedLiquid],
+        solidSnapshot: solid, liquidSnapshot: liquid, machineOpSnapshot: machineOps,
+        netMeter, qtyMeter, sqMeter,
+        materialTotal, operationalTotal, grandTotal, margin, finalPrice,
+        pricePerRoll: finalPrice / qtyOrder,
+        totalCost: grandTotal
+    };
+
+    if (currentEditId) {
+        const idx = estimations.findIndex(e => e.id === currentEditId);
+        if (idx !== -1) estimations[idx] = est;
+    } else {
+        estimations.push(est);
+    }
+    saveMasterData();
+    document.getElementById('docStatusBadge').className = 'status-badge submitted';
+    document.getElementById('docStatusBadge').innerText = 'Submitted';
+    alert(`✅ Estimation ${currentDocNumber} saved!`);
+    renderEstimationsTable();
+    document.getElementById('dashTotalEst').innerText = estimations.length;
+}
+
+function collectSolidData() {
+    return masterSolid.filter((_,i) => usedSolid.includes(i)).map(m => ({ ...m }));
+}
+function collectLiquidData() {
+    return masterLiquid.filter((_,i) => usedLiquid.includes(i)).map(m => ({ ...m }));
+}
+function collectMachineOpData() {
+    return masterMachineOp.filter(m => m.status === 'Active').map(m => ({ ...m }));
+}
+
+function loadEstimation(id) {
+    const est = estimations.find(e => e.id === id);
+    if (!est) return;
+    currentEditId = est.id;
+    currentDocNumber = est.docNumber;
+    document.getElementById('docNumberDisplay').innerText = est.docNumber;
+    document.getElementById('docCreatedDate').innerText = est.createdDate;
+    document.getElementById('docPreparedBy').innerText = est.preparedBy || userProfile.name;
+    document.getElementById('docStatusBadge').className = 'status-badge submitted';
+    document.getElementById('docStatusBadge').innerText = est.status;
+    const set = (id,v) => { const el=document.getElementById(id); if(el) el.value=v||''; };
+    set('productName', est.productName); set('composition', est.composition);
+    set('lebarRoll', est.lebarRoll); set('panjangPitch', est.panjangPitch);
+    set('qtyOrder', est.qtyOrder); set('upValue', est.upValue);
+    set('wasteFactor', est.wasteFactor); set('currencyRate', est.currencyRate);
+    ['categoryTier','groupingProduct','unitType','currencyType'].forEach(id => {
+        const el=document.getElementById(id); if(el&&est[id]) el.value=est[id];
+    });
+    document.getElementById('jumlahWarna').value = est.jumlahWarna || 5;
+    document.getElementById('warnaValueDisplay').innerHTML = (est.jumlahWarna||5) + ' Unit';
+    usedSolid = est.usedSolid ? [...est.usedSolid] : [];
+    usedLiquid = est.usedLiquid ? [...est.usedLiquid] : [];
+    showPage('estimation', null);
+    refreshAll();
+}
+
+function deleteEstimation(id) {
+    if (confirm('Delete this estimation permanently?')) {
+        estimations = estimations.filter(e => e.id !== id);
+        saveMasterData();
+        renderEstimationsTable();
+        document.getElementById('dashTotalEst').innerText = estimations.length;
+    }
+}
+
+function renderEstimationsTable(filter = '') {
+    const filtered = estimations.filter(e =>
+        (e.docNumber||'').toLowerCase().includes(filter.toLowerCase()) ||
+        (e.productName||'').toLowerCase().includes(filter.toLowerCase())
+    );
+    let html = '';
+    filtered.forEach((est, i) => {
+        html += `<tr>
+            <td class="mono" style="color:var(--text-muted);">${String(i+1).padStart(2,'0')}</td>
+            <td><strong style="color:var(--primary);font-family:'DM Mono',monospace;">${est.docNumber}</strong></td>
+            <td class="mono">${est.createdDate}</td>
+            <td><strong>${est.productName}</strong></td>
+            <td><span class="chip blue">${est.groupingProduct||'—'}</span></td>
+            <td><span class="chip orange">${est.categoryTier||'—'}</span></td>
+            <td class="mono">${(est.qtyOrder||0).toLocaleString()} ${est.unitType||''}</td>
+            <td class="money">${Math.round(est.finalPrice||0).toLocaleString()}</td>
+            <td><span class="status-badge submitted">${est.status}</span></td>
+            <td><div style="display:flex;gap:4px;justify-content:flex-end;">
+                <button class="btn btn-primary btn-sm" title="View Report" onclick="viewEstimationReport(${est.id})"><i class="fas fa-eye"></i></button>
+                <button class="btn btn-pdf btn-sm" title="Download PDF" onclick="downloadEstimationPDF(${est.id})"><i class="fas fa-file-pdf"></i></button>
+                <button class="btn btn-warning btn-sm" title="Edit" onclick="loadEstimation(${est.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm" title="Delete" onclick="deleteEstimation(${est.id})"><i class="fas fa-trash"></i></button>
+            </div></td>
+        </tr>`;
+    });
+    document.getElementById('estimationsTableBody').innerHTML = html ||
+        '<tr class="empty-row"><td colspan="10"><i class="fas fa-folder-open"></i>No saved estimations</td></tr>';
+    document.getElementById('dashTotalEst').innerText = estimations.length;
+}
+
+function filterEstimations() {
+    renderEstimationsTable(document.getElementById('searchEstimation')?.value || '');
+}
+
+// ==================== CALCULATIONS ====================
+function calcMeterage() {
+    const up    = parseFloat(document.getElementById('upValue')?.value)    || 0;
+    const panjang= parseFloat(document.getElementById('panjangPitch')?.value) || 0;
+    const qty   = parseFloat(document.getElementById('qtyOrder')?.value)   || 0;
+    const lebar = parseFloat(document.getElementById('lebarRoll')?.value)  || 0;
+    const waste = parseFloat(document.getElementById('wasteFactor')?.value)|| 0;
+    const unit  = document.getElementById('unitType')?.value;
+    if (!up||!panjang||!qty||!lebar||!unit) {
+        ['statNetMeter','statQtyMeter','statSqm'].forEach(id => { const e=document.getElementById(id); if(e) e.innerText='0.00'; });
+        return { netMeter:0, qtyMeter:0, sqMeter:0 };
+    }
+    const netMeter = unit==='Roll' ? (qty*panjang)/up : (qty*(panjang/1000))/up;
+    const qtyMeter = netMeter*(1+waste/100);
+    const sqMeter  = qtyMeter*((lebar*up)/1000);
+    document.getElementById('statNetMeter').innerText = netMeter.toFixed(2);
+    document.getElementById('statQtyMeter').innerText = qtyMeter.toFixed(2);
+    document.getElementById('statSqm').innerText       = sqMeter.toFixed(2);
+    return { netMeter, qtyMeter, sqMeter };
+}
+
+function renderSolidTable() {
+    const { sqMeter } = calcMeterage();
+    const rate = parseFloat(document.getElementById('currencyRate')?.value) || 1;
+    let total=0, totalKg=0, html='';
+    masterSolid.forEach((m, idx) => {
+        const used = usedSolid.includes(idx);
+        const qty = sqMeter * m.density * (m.thickness/1000);
+        const amount = qty * m.price * rate;
+        if (used) { total+=amount; totalKg+=qty; }
+        html += `<tr>
+            <td><strong>${m.name}</strong></td>
+            <td><span class="chip blue">${m.type}</span></td>
+            <td class="mono">${m.density}</td>
+            <td class="mono">${m.thickness} µm</td>
+            <td class="mono">${m.price.toFixed(2)} USD</td>
+            <td style="text-align:center;"><input type="checkbox" onchange="toggleSolid(${idx})" ${used?'checked':''}></td>
+            <td class="mono">${qty.toFixed(4)}</td>
+            <td class="money">${used ? Math.round(amount).toLocaleString() : '—'}</td>
+            <td><div style="display:flex;gap:4px;justify-content:flex-end;">
+                <button class="btn btn-warning btn-sm" onclick="editSolidInEst(${idx})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSolidFromEst(${idx})"><i class="fas fa-trash"></i></button>
+            </div></td>
+        </tr>`;
+    });
+    document.getElementById('solidTableBody').innerHTML = html || '<tr class="empty-row"><td colspan="9"><i class="fas fa-cubes"></i>No materials. Click "Add Solid"</td></tr>';
+    return { total, totalKg };
+}
+
+function renderLiquidTable() {
+    const { sqMeter } = calcMeterage();
+    const rate = parseFloat(document.getElementById('currencyRate')?.value) || 1;
+    let total=0, totalKg=0, html='';
+    masterLiquid.forEach((m, idx) => {
+        const used = usedLiquid.includes(idx);
+        const qty = sqMeter * (m.coating/1000);
+        const amount = qty * m.price * rate;
+        if (used) { total+=amount; totalKg+=qty; }
+        html += `<tr>
+            <td><strong>${m.name}</strong></td>
+            <td><span class="chip ${m.type==='adhesive'?'orange':'blue'}">${m.type}</span></td>
+            <td class="mono">${m.coating}</td>
+            <td class="mono">${m.price.toFixed(2)} USD</td>
+            <td style="text-align:center;"><input type="checkbox" onchange="toggleLiquid(${idx})" ${used?'checked':''}></td>
+            <td class="mono">${qty.toFixed(5)}</td>
+            <td class="money">${used ? Math.round(amount).toLocaleString() : '—'}</td>
+            <td><div style="display:flex;gap:4px;justify-content:flex-end;">
+                <button class="btn btn-warning btn-sm" onclick="editLiquidInEst(${idx})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm" onclick="deleteLiquidFromEst(${idx})"><i class="fas fa-trash"></i></button>
+            </div></td>
+        </tr>`;
+    });
+    document.getElementById('liquidTableBody').innerHTML = html || '<tr class="empty-row"><td colspan="8"><i class="fas fa-tint"></i>No materials. Click "Add Liquid"</td></tr>';
+    return { total, totalKg };
+}
+
+function renderMachineOpTable() {
+    const { qtyMeter } = calcMeterage();
+    let totalOp=0, html='';
+    masterMachineOp.forEach((m, idx) => {
+        const active = m.status === 'Active';
+        const workMins = (active && m.target>0) ? qtyMeter/m.target : 0;
+        const cost = workMins * (m.costMinute||0);
+        totalOp += cost;
+        html += `<tr>
+            <td><strong>${m.name}</strong></td>
+            <td><span class="chip blue">${m.grouping}</span></td>
+            <td class="mono">${m.target}</td>
+            <td class="mono">${m.baseUnit}</td>
+            <td class="mono">${(m.costMinute||0).toLocaleString()}</td>
+            <td><span class="chip ${active?'green':'orange'}">${m.status}</span></td>
+            <td class="mono">${workMins>0 ? (workMins/60).toFixed(2)+' hrs' : '—'}</td>
+            <td class="money">${active ? Math.round(cost).toLocaleString() : '—'}</td>
+            <td><div style="display:flex;gap:4px;justify-content:flex-end;">
+                <button class="btn btn-warning btn-sm" onclick="editMachineInEst(${idx})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMachineFromEst(${idx})"><i class="fas fa-trash"></i></button>
+            </div></td>
+        </tr>`;
+    });
+    document.getElementById('machineOpTableBody').innerHTML = html || '<tr class="empty-row"><td colspan="9"><i class="fas fa-industry"></i>No machines. Click "Add Machine"</td></tr>';
+    return totalOp;
+}
+
+function calcFinancials() {
+    const solid = renderSolidTable();
+    const liquid = renderLiquidTable();
+    const materialTotal = solid.total + liquid.total;
+    const operationalTotal = renderMachineOpTable();
+    const grandTotal = materialTotal + operationalTotal;
+    const category = document.getElementById('categoryTier')?.value;
+    const margin = category==='High-End' ? 0.20 : category==='Mid-End' ? 0.15 : 0.10;
+    const finalPrice = grandTotal * (1 + margin);
+    return { solid, liquid, materialTotal, operationalTotal, grandTotal, margin, finalPrice };
+}
+
+function refreshAll() {
+    const { materialTotal, operationalTotal, grandTotal, finalPrice } = calcFinancials();
+    const qtyOrd = parseFloat(document.getElementById('qtyOrder')?.value) || 1;
+    const set = (id,v) => { const e=document.getElementById(id); if(e) e.innerText=v; };
+    set('totalMaterialCost',  Math.round(materialTotal).toLocaleString());
+    set('operationalCost',    Math.round(operationalTotal).toLocaleString());
+    set('grandTotal',         Math.round(grandTotal).toLocaleString());
+    set('finalPrice',         Math.round(finalPrice).toLocaleString());
+    set('pricePerRoll',       Math.round(finalPrice/qtyOrd).toLocaleString());
+    set('statTotalCost',      Math.round(grandTotal).toLocaleString());
+    set('dashSolidCount',     masterSolid.length);
+    set('dashLiquidCount',    masterLiquid.length);
+    set('dashWCCount',        masterWC.length);
+    set('dashTotalEst',       estimations.length);
+}
+
+function toggleSolid(idx) { usedSolid.includes(idx) ? usedSolid=usedSolid.filter(i=>i!==idx) : usedSolid.push(idx); refreshAll(); }
+function toggleLiquid(idx) { usedLiquid.includes(idx) ? usedLiquid=usedLiquid.filter(i=>i!==idx) : usedLiquid.push(idx); refreshAll(); }
+
+// ==================== MASTER TABLES ====================
+function renderMasterTables() {
+    let sh='', lh='', wh='';
+    masterSolid.forEach((m,i)=>{ sh+=`<tr><td class="mono" style="color:var(--text-muted);">${String(i+1).padStart(2,'0')}</td><td><strong>${m.name}</strong></td><td><span class="chip blue">${m.type}</span></td><td class="mono">${m.density}</td><td class="mono">${m.thickness} µm</td><td class="mono">${m.price} USD</td><td style="text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><button class="btn btn-warning btn-sm" onclick="editSolidMaster(${i})"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm" onclick="deleteSolidMaster(${i})"><i class="fas fa-trash"></i></button></div></td></tr>`; });
+    masterLiquid.forEach((m,i)=>{ lh+=`<tr><td class="mono" style="color:var(--text-muted);">${String(i+1).padStart(2,'0')}</td><td><strong>${m.name}</strong></td><td><span class="chip ${m.type==='adhesive'?'orange':'blue'}">${m.type}</span></td><td class="mono">${m.coating}</td><td class="mono">${m.price} USD</td><td style="text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><button class="btn btn-warning btn-sm" onclick="editLiquidMaster(${i})"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLiquidMaster(${i})"><i class="fas fa-trash"></i></button></div></td></tr>`; });
+    masterWC.forEach((m,i)=>{ wh+=`<tr><td class="mono" style="color:var(--text-muted);">${String(i+1).padStart(2,'0')}</td><td><strong>${m.name}</strong></td><td><span class="chip blue">${m.grouping}</span></td><td class="mono">${m.target}</td><td class="mono">${m.baseUnit}</td><td class="mono">${(m.costMinute||0).toLocaleString()}</td><td><span class="chip ${m.status==='Active'?'green':'orange'}">${m.status}</span></td><td style="text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><button class="btn btn-warning btn-sm" onclick="editWCMaster(${i})"><i class="fas fa-edit"></i></button><button class="btn btn-danger btn-sm" onclick="deleteWCMaster(${i})"><i class="fas fa-trash"></i></button></div></td></tr>`; });
+    const s=document.getElementById('solidMasterBody'); if(s) s.innerHTML=sh||'<tr class="empty-row"><td colspan="7"><i class="fas fa-box-open"></i>No data</td></tr>';
+    const l=document.getElementById('liquidMasterBody'); if(l) l.innerHTML=lh||'<tr class="empty-row"><td colspan="6"><i class="fas fa-box-open"></i>No data</td></tr>';
+    const w=document.getElementById('wcMasterBody'); if(w) w.innerHTML=wh||'<tr class="empty-row"><td colspan="8"><i class="fas fa-box-open"></i>No data</td></tr>';
+}
+
+// Solid CRUD
+function openSolidModal() { document.getElementById('solidEditIdx').value=-1; ['solidName','solidDensity','solidThickness','solidPrice'].forEach(id=>document.getElementById(id).value=''); document.getElementById('solidType').value='film'; document.getElementById('solidModalForm').style.display='flex'; }
+function openSolidMasterModal() { openSolidModal(); }
+function closeSolidModal() { document.getElementById('solidModalForm').style.display='none'; }
+function saveSolidMaster() { const d={name:document.getElementById('solidName').value,type:document.getElementById('solidType').value,density:parseFloat(document.getElementById('solidDensity').value),thickness:parseFloat(document.getElementById('solidThickness').value),price:parseFloat(document.getElementById('solidPrice').value)}; if(!d.name)return alert('Name required'); const idx=parseInt(document.getElementById('solidEditIdx').value); if(idx>=0)masterSolid[idx]=d; else masterSolid.push(d); saveMasterData(); renderMasterTables(); refreshAll(); closeSolidModal(); }
+function editSolidMaster(i) { const m=masterSolid[i]; document.getElementById('solidEditIdx').value=i; document.getElementById('solidName').value=m.name; document.getElementById('solidType').value=m.type; document.getElementById('solidDensity').value=m.density; document.getElementById('solidThickness').value=m.thickness; document.getElementById('solidPrice').value=m.price; document.getElementById('solidModalForm').style.display='flex'; }
+function deleteSolidMaster(i) { if(confirm('Delete?')){ masterSolid.splice(i,1); usedSolid=usedSolid.filter(x=>x!==i).map(x=>x>i?x-1:x); saveMasterData(); renderMasterTables(); refreshAll(); } }
+function editSolidInEst(i) { editSolidMaster(i); }
+function deleteSolidFromEst(i) { if(confirm(`Hapus "${masterSolid[i].name}"?`)){ masterSolid.splice(i,1); usedSolid=usedSolid.filter(x=>x!==i).map(x=>x>i?x-1:x); saveMasterData(); renderMasterTables(); refreshAll(); } }
+
+// Liquid CRUD
+function openLiquidModal() { document.getElementById('liquidEditIdx').value=-1; ['liquidName','liquidCoating','liquidPrice'].forEach(id=>document.getElementById(id).value=''); document.getElementById('liquidType').value='tinta'; document.getElementById('liquidModalForm').style.display='flex'; }
+function openLiquidMasterModal() { openLiquidModal(); }
+function closeLiquidModal() { document.getElementById('liquidModalForm').style.display='none'; }
+function saveLiquidMaster() { const d={name:document.getElementById('liquidName').value,type:document.getElementById('liquidType').value,coating:parseFloat(document.getElementById('liquidCoating').value),price:parseFloat(document.getElementById('liquidPrice').value)}; if(!d.name)return alert('Name required'); const idx=parseInt(document.getElementById('liquidEditIdx').value); if(idx>=0)masterLiquid[idx]=d; else masterLiquid.push(d); saveMasterData(); renderMasterTables(); refreshAll(); closeLiquidModal(); }
+function editLiquidMaster(i) { const m=masterLiquid[i]; document.getElementById('liquidEditIdx').value=i; document.getElementById('liquidName').value=m.name; document.getElementById('liquidType').value=m.type; document.getElementById('liquidCoating').value=m.coating; document.getElementById('liquidPrice').value=m.price; document.getElementById('liquidModalForm').style.display='flex'; }
+function deleteLiquidMaster(i) { if(confirm('Delete?')){ masterLiquid.splice(i,1); usedLiquid=usedLiquid.filter(x=>x!==i).map(x=>x>i?x-1:x); saveMasterData(); renderMasterTables(); refreshAll(); } }
+function editLiquidInEst(i) { editLiquidMaster(i); }
+function deleteLiquidFromEst(i) { if(confirm(`Hapus "${masterLiquid[i].name}"?`)){ masterLiquid.splice(i,1); usedLiquid=usedLiquid.filter(x=>x!==i).map(x=>x>i?x-1:x); saveMasterData(); renderMasterTables(); refreshAll(); } }
+
+// WC CRUD
+function openWCMasterModal() { document.getElementById('wcEditIdx').value=-1; ['wcName','wcTarget','wcCostMinute'].forEach(id=>document.getElementById(id).value=''); document.getElementById('wcGrouping').value='Printing'; document.getElementById('wcBaseUnit').value='m/min'; document.getElementById('wcStatus').value='Active'; document.getElementById('wcModalForm').style.display='flex'; }
+function closeWCMasterModal() { document.getElementById('wcModalForm').style.display='none'; }
+function saveWCMaster() { const d={name:document.getElementById('wcName').value,grouping:document.getElementById('wcGrouping').value,target:parseFloat(document.getElementById('wcTarget').value),baseUnit:document.getElementById('wcBaseUnit').value,costMinute:parseFloat(document.getElementById('wcCostMinute').value),status:document.getElementById('wcStatus').value}; if(!d.name)return alert('Name required'); if(!d.target)return alert('Target required'); const idx=parseInt(document.getElementById('wcEditIdx').value); if(idx>=0)masterWC[idx]=d; else masterWC.push(d); saveMasterData(); renderMasterTables(); refreshAll(); closeWCMasterModal(); }
+function editWCMaster(i) { const m=masterWC[i]; document.getElementById('wcEditIdx').value=i; document.getElementById('wcName').value=m.name; document.getElementById('wcGrouping').value=m.grouping; document.getElementById('wcTarget').value=m.target; document.getElementById('wcBaseUnit').value=m.baseUnit; document.getElementById('wcCostMinute').value=m.costMinute; document.getElementById('wcStatus').value=m.status; document.getElementById('wcModalForm').style.display='flex'; }
+function deleteWCMaster(i) { if(confirm('Delete?')){ masterWC.splice(i,1); saveMasterData(); renderMasterTables(); refreshAll(); } }
+
+// Machine Op CRUD
+function openMachineOpModal() { document.getElementById('machineOpEditIdx').value=-1; ['moName','moTarget','moCostMinute'].forEach(id=>document.getElementById(id).value=''); document.getElementById('moGrouping').value='Printing'; document.getElementById('moBaseUnit').value='m/min'; document.getElementById('moStatus').value='Active'; document.getElementById('machineOpModalForm').style.display='flex'; }
+function closeMachineOpModal() { document.getElementById('machineOpModalForm').style.display='none'; }
+function saveMachineOpMaster() { const d={name:document.getElementById('moName').value,grouping:document.getElementById('moGrouping').value,target:parseFloat(document.getElementById('moTarget').value),baseUnit:document.getElementById('moBaseUnit').value,costMinute:parseFloat(document.getElementById('moCostMinute').value),status:document.getElementById('moStatus').value}; if(!d.name)return alert('Name required'); if(!d.target)return alert('Target required'); const idx=parseInt(document.getElementById('machineOpEditIdx').value); if(idx>=0)masterMachineOp[idx]=d; else masterMachineOp.push(d); saveMasterData(); refreshAll(); closeMachineOpModal(); }
+function editMachineInEst(i) { const m=masterMachineOp[i]; document.getElementById('machineOpEditIdx').value=i; document.getElementById('moName').value=m.name; document.getElementById('moGrouping').value=m.grouping; document.getElementById('moTarget').value=m.target; document.getElementById('moBaseUnit').value=m.baseUnit; document.getElementById('moCostMinute').value=m.costMinute; document.getElementById('moStatus').value=m.status; document.getElementById('machineOpModalForm').style.display='flex'; }
+function deleteMachineFromEst(i) { if(confirm(`Hapus "${masterMachineOp[i].name}"?`)){ masterMachineOp.splice(i,1); saveMasterData(); refreshAll(); } }
+
+// Profile
+function updateProfileDisplay() { document.getElementById('profileName').innerText = userProfile.name; }
+function openProfileModal() { document.getElementById('editFullName').value=userProfile.name; document.getElementById('editEmail').value=userProfile.email; document.getElementById('editJobTitle').value=userProfile.jobTitle||''; document.getElementById('profileModal').style.display='flex'; document.getElementById('dropdownMenu').classList.remove('show'); }
+function closeProfileModal() { document.getElementById('profileModal').style.display='none'; }
+function saveProfile() { userProfile={name:document.getElementById('editFullName').value,email:document.getElementById('editEmail').value,jobTitle:document.getElementById('editJobTitle').value}; localStorage.setItem(PROFILE_KEY,JSON.stringify(userProfile)); updateProfileDisplay(); closeProfileModal(); alert('Profile updated'); }
+
+// Navigation
+function showPage(page, navEl) {
+    document.querySelectorAll('.page-container').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    const pg = document.getElementById(`${page}Page`);
+    if (pg) pg.classList.add('active');
+    if (navEl) navEl.classList.add('active');
+    else { document.querySelectorAll('.nav-item').forEach(i=>{ if(i.getAttribute('onclick')&&i.getAttribute('onclick').includes(`'${page}'`)) i.classList.add('active'); }); }
+    const titles = { dashboard:'Dashboard', estimation:'Cost Estimation', estimations:'Saved Estimations', 'solid-master':'Solid Materials', 'liquid-master':'Liquid Materials', 'working-centre':'Working Centre' };
+    document.getElementById('pageTitle').innerText = titles[page] || page;
+    if (page==='estimations') renderEstimationsTable();
+    if (['solid-master','liquid-master','working-centre'].includes(page)) renderMasterTables();
+    if (page==='estimation') refreshAll();
+}
+
+// =====================================================================
+//  PDF REPORT ENGINE
+// =====================================================================
+function buildReportHTML(data) {
+    const fN = n => Math.round(n||0).toLocaleString('id-ID');
+    const fD = n => (n||0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    const solidRows = (data.solidSnapshot||[]).map(m=>`
+        <tr><td>${m.name}</td><td>${m.type}</td><td>${m.density}</td><td>${m.thickness} µm</td><td style="text-align:right;">${m.price.toFixed(2)} USD</td></tr>
+    `).join('');
+
+    const liquidRows = (data.liquidSnapshot||[]).map(m=>`
+        <tr><td>${m.name}</td><td>${m.type}</td><td>${m.coating}</td><td style="text-align:right;">${m.price.toFixed(2)} USD</td></tr>
+    `).join('');
+
+    const machineRows = (data.machineOpSnapshot||[]).map(m=>{
+        const workMins = (m.target>0) ? (data.qtyMeter||0)/m.target : 0;
+        const cost = workMins*(m.costMinute||0);
+        return `<tr><td>${m.name}</td><td>${m.grouping}</td><td>${m.target} ${m.baseUnit}</td><td style="text-align:right;">${(m.costMinute||0).toLocaleString()}</td><td style="text-align:right;">${(workMins/60).toFixed(2)} hrs</td><td style="text-align:right;font-weight:700;color:#1a56db;">${fN(cost)}</td></tr>`;
+    }).join('');
+
+    const marginPct = Math.round((data.margin||0)*100);
+
+    return `
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body, .rpt { font-family:'DM Sans',Arial,sans-serif; font-size:11px; color:#111827; background:white; }
+        .rpt { width:754px; padding:20px; }
+
+        /* HEADER */
+        .rpt-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+        .rpt-logo-block {}
+        .rpt-logo-name { font-size:22px; font-weight:800; color:#1a56db; letter-spacing:-1px; }
+        .rpt-logo-name span { color:#0ea5e9; }
+        .rpt-logo-sub { font-size:9px; color:#9ca3af; margin-top:2px; text-transform:uppercase; letter-spacing:1px; }
+        .rpt-doc-block { text-align:right; }
+        .rpt-doc-number { font-size:18px; font-weight:700; color:#1a56db; font-family:monospace; letter-spacing:1px; }
+        .rpt-doc-meta { font-size:10px; color:#6b7280; margin-top:4px; line-height:1.7; }
+
+        /* DIVIDER */
+        .rpt-divider { height:2px; background:linear-gradient(90deg,#1a56db,#0ea5e9,#e2e5ea); margin:0 0 16px; border-radius:2px; }
+        .rpt-divider-light { height:1px; background:#e2e5ea; margin:14px 0; }
+
+        /* SECTION */
+        .rpt-section { margin-bottom:16px; }
+        .rpt-section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#9ca3af; border-bottom:1px solid #f0f2f5; padding-bottom:5px; margin-bottom:10px; }
+
+        /* FIELD GRID */
+        .rpt-field-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .rpt-field { background:#f8f9fb; border-radius:6px; padding:8px 10px; }
+        .rpt-field-label { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:2px; }
+        .rpt-field-value { font-size:11px; font-weight:600; color:#111827; }
+
+        /* TABLES */
+        .rpt-table { width:100%; border-collapse:collapse; font-size:10px; margin-bottom:6px; }
+        .rpt-table thead tr { background:#f0f2f5; }
+        .rpt-table th { padding:6px 8px; text-align:left; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:#6b7280; border-bottom:1px solid #e2e5ea; }
+        .rpt-table td { padding:5px 8px; border-bottom:1px solid #f5f5f5; color:#374151; }
+        .rpt-table tbody tr:last-child td { border-bottom:none; }
+        .rpt-table tbody tr:nth-child(even) { background:#fafafa; }
+
+        /* OPEX CARDS */
+        .rpt-opex-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+        .rpt-opex-card { background:#f8f9fb; border:1px solid #e2e5ea; border-radius:8px; padding:10px 12px; text-align:center; }
+        .rpt-opex-label { font-size:8px; text-transform:uppercase; color:#9ca3af; font-weight:700; margin-bottom:4px; }
+        .rpt-opex-value { font-size:13px; font-weight:700; color:#1a56db; font-family:monospace; }
+        .rpt-opex-unit { font-size:9px; color:#9ca3af; margin-top:2px; }
+
+        /* SUMMARY BAR */
+        .rpt-summary { background:linear-gradient(135deg,#1e3a5f,#1a56db); border-radius:10px; padding:16px; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+        .rpt-sum-item { text-align:center; }
+        .rpt-sum-label { font-size:8px; text-transform:uppercase; letter-spacing:0.6px; color:rgba(255,255,255,0.6); margin-bottom:4px; font-weight:600; }
+        .rpt-sum-value { font-size:14px; font-weight:700; color:white; font-family:monospace; }
+        .rpt-sum-value.xl { font-size:18px; }
+        .rpt-sum-unit { font-size:8px; color:rgba(255,255,255,0.5); margin-top:2px; }
+        .rpt-sum-highlight { border-radius:8px; background:rgba(255,255,255,0.15); padding:10px 8px; }
+
+        /* FOOTER */
+        .rpt-footer { margin-top:18px; padding-top:10px; border-top:1px solid #e2e5ea; display:flex; justify-content:space-between; align-items:center; }
+        .rpt-footer-left { font-size:9px; color:#9ca3af; }
+        .rpt-footer-right { font-size:9px; color:#9ca3af; text-align:right; }
+        .rpt-watermark { font-size:8px; font-weight:700; color:#dbeafe; text-transform:uppercase; letter-spacing:1px; }
+
+        /* BADGE */
+        .rpt-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:9px; font-weight:700; }
+        .rpt-badge-blue { background:#dbeafe; color:#1a56db; }
+        .rpt-badge-orange { background:#fef3c7; color:#d97706; }
+        .rpt-badge-green { background:#d1fae5; color:#059669; }
+    </style>
+
+    <div class="rpt">
+        <!-- HEADER -->
+        <div class="rpt-header">
+            <div class="rpt-logo-block">
+                <div class="rpt-logo-name">Adara - Cost Estimation <span>NEO</span></div>
+                <div class="rpt-logo-sub">Cost Intelligence Suite</div>
+            </div>
+            <div class="rpt-doc-block">
+                <div class="rpt-doc-number">${data.docNumber||'—'}</div>
+                <div class="rpt-doc-meta">
+                    Date: ${data.createdDate||'—'}<br>
+                    Prepared by: ${data.preparedBy||'—'}<br>
+                    Saved: ${data.savedAt ? new Date(data.savedAt).toLocaleString('id-ID') : '—'}
+                </div>
+            </div>
+        </div>
+        <div class="rpt-divider"></div>
+
+        <!-- PRODUCT PROFILE -->
+        <div class="rpt-section">
+            <div class="rpt-section-title">Product Profile</div>
+            <div class="rpt-field-grid">
+                <div class="rpt-field"><div class="rpt-field-label">Product Name</div><div class="rpt-field-value">${data.productName||'—'}</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Composition</div><div class="rpt-field-value">${data.composition||'—'}</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Grouping</div><div class="rpt-field-value"><span class="rpt-badge rpt-badge-blue">${data.groupingProduct||'—'}</span></div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Category Tier</div><div class="rpt-field-value"><span class="rpt-badge rpt-badge-orange">${data.categoryTier||'—'}</span></div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Margin</div><div class="rpt-field-value">${marginPct}%</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Currency</div><div class="rpt-field-value">${data.currencyType||'USD'} @ ${(data.currencyRate||0).toLocaleString()}</div></div>
+            </div>
+        </div>
+
+        <!-- DIMENSION & ORDER -->
+        <div class="rpt-section">
+            <div class="rpt-section-title">Dimension & Order</div>
+            <div class="rpt-field-grid">
+                <div class="rpt-field"><div class="rpt-field-label">Lebar Roll</div><div class="rpt-field-value">${data.lebarRoll||'—'} mm</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Panjang/Roll</div><div class="rpt-field-value">${data.panjangPitch||'—'} m</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Qty Order</div><div class="rpt-field-value">${(data.qtyOrder||0).toLocaleString()} ${data.unitType||''}</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Layout (Up)</div><div class="rpt-field-value">${data.upValue||'—'} pcs/roll</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Waste Factor</div><div class="rpt-field-value">${data.wasteFactor||'—'} %</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Number of Unit</div><div class="rpt-field-value">${data.jumlahWarna||'—'}</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Net Meter</div><div class="rpt-field-value">${fD(data.netMeter)} m</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Qty Meter</div><div class="rpt-field-value">${fD(data.qtyMeter)} m</div></div>
+                <div class="rpt-field"><div class="rpt-field-label">Total Area</div><div class="rpt-field-value">${fD(data.sqMeter)} m²</div></div>
+            </div>
+        </div>
+
+        <!-- SOLID MATERIALS -->
+        <div class="rpt-section">
+            <div class="rpt-section-title">Solid Materials Used</div>
+            <table class="rpt-table">
+                <thead><tr><th>Material</th><th>Type</th><th>Density</th><th>Thickness</th><th style="text-align:right;">Price/kg</th></tr></thead>
+                <tbody>${solidRows||'<tr><td colspan="5" style="text-align:center;padding:12px;color:#9ca3af;">No solid materials</td></tr>'}</tbody>
+            </table>
+        </div>
+
+        <!-- LIQUID MATERIALS -->
+        <div class="rpt-section">
+            <div class="rpt-section-title">Liquid Materials Used</div>
+            <table class="rpt-table">
+                <thead><tr><th>Material</th><th>Type</th><th>Coating Wt (g/m²)</th><th style="text-align:right;">Price/kg</th></tr></thead>
+                <tbody>${liquidRows||'<tr><td colspan="4" style="text-align:center;padding:12px;color:#9ca3af;">No liquid materials</td></tr>'}</tbody>
+            </table>
+        </div>
+
+        <!-- MACHINE OPERATIONAL -->
+        <div class="rpt-section">
+            <div class="rpt-section-title">Sub Operational Cost per Machine</div>
+            <table class="rpt-table">
+                <thead><tr><th>Machine</th><th>Grouping</th><th>Target</th><th style="text-align:right;">Cost/Min (IDR)</th><th style="text-align:right;">Working Hrs</th><th style="text-align:right;">Total Cost (IDR)</th></tr></thead>
+                <tbody>${machineRows||'<tr><td colspan="6" style="text-align:center;padding:12px;color:#9ca3af;">No machine data</td></tr>'}</tbody>
+            </table>
+            <div class="rpt-opex-grid" style="margin-top:10px;">
+                <div class="rpt-opex-card"><div class="rpt-opex-label">Material Cost</div><div class="rpt-opex-value">${fN(data.materialTotal)}</div><div class="rpt-opex-unit">IDR</div></div>
+                <div class="rpt-opex-card"><div class="rpt-opex-label">Operational Cost</div><div class="rpt-opex-value">${fN(data.operationalTotal)}</div><div class="rpt-opex-unit">IDR</div></div>
+                <div class="rpt-opex-card"><div class="rpt-opex-label">Grand Total</div><div class="rpt-opex-value">${fN(data.grandTotal)}</div><div class="rpt-opex-unit">IDR</div></div>
+            </div>
+        </div>
+
+        <!-- FINANCIAL SUMMARY -->
+        <div class="rpt-summary">
+            <div class="rpt-sum-item rpt-sum-highlight">
+                <div class="rpt-sum-label">Final Price (+${marginPct}% Margin)</div>
+                <div class="rpt-sum-value xl">${fN(data.finalPrice)}</div>
+                <div class="rpt-sum-unit">IDR</div>
+            </div>
+            <div class="rpt-sum-item rpt-sum-highlight">
+                <div class="rpt-sum-label">Price / Roll</div>
+                <div class="rpt-sum-value xl">${fN(data.pricePerRoll)}</div>
+                <div class="rpt-sum-unit">IDR</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Material Cost</div>
+                <div class="rpt-sum-value">${fN(data.materialTotal)}</div>
+                <div class="rpt-sum-unit">IDR</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Operational Cost</div>
+                <div class="rpt-sum-value">${fN(data.operationalTotal)}</div>
+                <div class="rpt-sum-unit">IDR</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Grand Total</div>
+                <div class="rpt-sum-value">${fN(data.grandTotal)}</div>
+                <div class="rpt-sum-unit">IDR</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Net Meter</div>
+                <div class="rpt-sum-value">${fD(data.netMeter)}</div>
+                <div class="rpt-sum-unit">m</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Qty Meter</div>
+                <div class="rpt-sum-value">${fD(data.qtyMeter)}</div>
+                <div class="rpt-sum-unit">m</div>
+            </div>
+            <div class="rpt-sum-item">
+                <div class="rpt-sum-label">Total Area</div>
+                <div class="rpt-sum-value">${fD(data.sqMeter)}</div>
+                <div class="rpt-sum-unit">m²</div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="rpt-footer">
+            <div class="rpt-footer-left">
+                <div class="rpt-watermark">Adara Cost Estimation · Cost Intelligence Suite</div>
+                <div style="margin-top:3px;">Document: ${data.docNumber||'—'} · This document is computer-generated.</div>
+            </div>
+            <div class="rpt-footer-right">
+                Generated: ${new Date().toLocaleString('id-ID')}<br>
+                Prepared by: ${data.preparedBy||'—'}
+            </div>
+        </div>
+    </div>`;
+}
+
+function getCurrentEstimationData() {
+    const { materialTotal, operationalTotal, grandTotal, margin, finalPrice } = calcFinancials();
+    const { netMeter, qtyMeter, sqMeter } = calcMeterage();
+    const qtyOrder = parseFloat(document.getElementById('qtyOrder')?.value) || 1;
+    return {
+        docNumber:       document.getElementById('docNumberDisplay')?.innerText || currentDocNumber,
+        createdDate:     document.getElementById('docCreatedDate')?.innerText   || '',
+        savedAt:         new Date().toISOString(),
+        preparedBy:      userProfile.name,
+        productName:     document.getElementById('productName')?.value          || '',
+        composition:     document.getElementById('composition')?.value          || '',
+        categoryTier:    document.getElementById('categoryTier')?.value         || '',
+        groupingProduct: document.getElementById('groupingProduct')?.value      || '',
+        lebarRoll:       document.getElementById('lebarRoll')?.value            || '',
+        panjangPitch:    document.getElementById('panjangPitch')?.value         || '',
+        qtyOrder, unitType: document.getElementById('unitType')?.value || '',
+        upValue:         document.getElementById('upValue')?.value              || '',
+        wasteFactor:     document.getElementById('wasteFactor')?.value          || '',
+        jumlahWarna:     document.getElementById('jumlahWarna')?.value          || 5,
+        currencyType:    document.getElementById('currencyType')?.value         || 'USD',
+        currencyRate:    parseFloat(document.getElementById('currencyRate')?.value) || 1,
+        solidSnapshot:   collectSolidData(),
+        liquidSnapshot:  collectLiquidData(),
+        machineOpSnapshot: collectMachineOpData(),
+        netMeter, qtyMeter, sqMeter,
+        materialTotal, operationalTotal, grandTotal, margin, finalPrice,
+        pricePerRoll: finalPrice / qtyOrder
+    };
+}
+
+async function generatePDFReport(estId) {
+    const data = estId ? estimations.find(e=>e.id===estId) : getCurrentEstimationData();
+    if (!data) return alert('No data to generate report');
+    if (!data.productName) return alert('Please fill Product Name first');
+
+    const overlay = document.getElementById('pdfLoadingOverlay');
+    const status = document.getElementById('pdfLoadingStatus');
+    const bar = document.getElementById('pdfProgressBar');
+    overlay.classList.add('show');
+
+    const setProgress = (pct, msg) => {
+        bar.style.width = pct + '%';
+        status.innerText = msg;
+    };
+
+    try {
+        setProgress(10, 'Building report layout...');
+        await new Promise(r=>setTimeout(r,200));
+
+        const container = document.getElementById('pdfRenderContainer');
+        container.innerHTML = buildReportHTML(data);
+
+        setProgress(30, 'Rendering document...');
+        await new Promise(r=>setTimeout(r,300));
+
+        setProgress(55, 'Capturing pages...');
+        const canvas = await html2canvas(container.querySelector('.rpt'), {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: 754,
+        });
+
+        setProgress(75, 'Generating PDF...');
+        await new Promise(r=>setTimeout(r,100));
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const margin = 18;
+        const usableW = pageW - margin*2;
+        const imgH = (canvas.height * usableW) / canvas.width;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        // Handle multi-page
+        let yPos = margin;
+        let remainH = imgH;
+        let srcY = 0;
+        const usableH = pageH - margin*2;
+        let pageCount = 0;
+
+        while (remainH > 0) {
+            if (pageCount > 0) pdf.addPage();
+            const sliceH = Math.min(remainH, usableH);
+            const srcSliceH = (sliceH / imgH) * canvas.height;
+
+            // Crop canvas slice
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = srcSliceH;
+            const ctx = sliceCanvas.getContext('2d');
+            ctx.drawImage(canvas, 0, srcY, canvas.width, srcSliceH, 0, 0, canvas.width, srcSliceH);
+
+            pdf.addImage(sliceCanvas.toDataURL('image/jpeg',0.95), 'JPEG', margin, yPos, usableW, sliceH);
+
+            srcY += srcSliceH;
+            remainH -= sliceH;
+            pageCount++;
+        }
+
+        setProgress(90, 'Finalizing PDF...');
+        await new Promise(r=>setTimeout(r,100));
+
+        const fileName = `${data.docNumber||'EstimationReport'}_${data.productName.replace(/\s+/g,'-')}.pdf`;
+        pdf.save(fileName);
+
+        setProgress(100, 'Done! PDF downloaded.');
+        await new Promise(r=>setTimeout(r,600));
+
+    } catch (err) {
+        console.error(err);
+        alert('Error generating PDF: ' + err.message);
+    } finally {
+        overlay.classList.remove('show');
+        document.getElementById('pdfRenderContainer').innerHTML = '';
+    }
+}
+
+function previewReport() {
+    const data = getCurrentEstimationData();
+    if (!data.productName) return alert('Please fill Product Name first');
+    document.getElementById('previewDocTitle').innerText = data.docNumber || 'Estimation Report';
+    document.getElementById('reportPreviewBody').innerHTML = buildReportHTML(data);
+    document.getElementById('reportPreviewOverlay').classList.add('show');
+}
+
+function closeReportPreview() {
+    document.getElementById('reportPreviewOverlay').classList.remove('show');
+    document.getElementById('reportPreviewBody').innerHTML = '';
+}
+
+function viewEstimationReport(id) {
+    const data = estimations.find(e=>e.id===id);
+    if (!data) return;
+    document.getElementById('previewDocTitle').innerText = data.docNumber || 'Estimation Report';
+    document.getElementById('reportPreviewBody').innerHTML = buildReportHTML(data);
+    document.getElementById('reportPreviewOverlay').classList.add('show');
+}
+
+function downloadEstimationPDF(id) { generatePDFReport(id); }
+
+// ==================== EVENT LISTENERS ====================
+document.getElementById('jumlahWarna')?.addEventListener('input', () => {
+    document.getElementById('warnaValueDisplay').innerHTML = document.getElementById('jumlahWarna').value + ' Unit';
+    refreshAll();
+});
+['lebarRoll','panjangPitch','qtyOrder','unitType','upValue','wasteFactor','currencyRate','currencyType','categoryTier'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', refreshAll);
+    if(el) el.addEventListener('change', refreshAll);
+});
+document.getElementById('avatarBtn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('dropdownMenu')?.classList.toggle('show');
+});
+document.addEventListener('click', () => {
+    document.getElementById('dropdownMenu')?.classList.remove('show');
+});
+
+// ==================== BOOT ====================
+loadAllData();
+renderMasterTables();
+renderEstimationsTable();
+refreshAll();
+newEstimation();
+
+// ==================== SERVICE WORKER ====================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[PWA] SW registered:', reg.scope))
+            .catch(err => console.warn('[PWA] SW failed:', err));
+    });
+}
+</script>
+</body>
+</html>
